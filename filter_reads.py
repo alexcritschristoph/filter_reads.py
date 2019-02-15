@@ -43,7 +43,7 @@ def filter_reads(bam, positions, fasta_length, filter_cutoff = 0.97, max_insert_
     #for printing out a new bam file
     if write_bam:
         print("Copying header for new bam...")
-        samfile_out = pysam.AlignmentFile(write_bam, "wb", template=samfile)
+        samfile_out = pysam.AlignmentFile(write_bam + "_temp", "wb", template=samfile)
         reads_all = defaultdict(list)
 
     print("READING BAM: " + bam.split("/")[-1])
@@ -178,8 +178,8 @@ def filter_reads(bam, positions, fasta_length, filter_cutoff = 0.97, max_insert_
     if write_bam:
         samfile_out.close()
         print("sorting new bam")
-        pysam.sort("-o", bam.split("/")[-1].split(".")[0] + "_filtered_sort.bam", bam.split("/")[-1].split(".")[0] + "_filtered.bam")
-        os.system('rm ' + bam.split("/")[-1].split(".")[0] + "_filtered.bam")
+        pysam.sort("-o", write_bam, write_bam + "_temp")
+        os.system('rm ' + write_bam + "_temp")
 
     if log:
         log_file.close()
