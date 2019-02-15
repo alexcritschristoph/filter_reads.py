@@ -43,7 +43,7 @@ def filter_reads(bam, positions, fasta_length, filter_cutoff = 0.97, max_insert_
     #for printing out a new bam file
     if write_bam:
         print("Copying header for new bam...")
-        samfile_out = pysam.AlignmentFile(bam.split("/")[-1].split(".")[0] + "_filtered.bam", "wb", template=samfile)
+        samfile_out = pysam.AlignmentFile(write_bam, "wb", template=samfile)
         reads_all = defaultdict(list)
 
     print("READING BAM: " + bam.split("/")[-1])
@@ -220,8 +220,8 @@ samtools index sample.sorted.bam\n in that order!""", formatter_class=argparse.R
     parser.add_argument("-w", "--write", action="store", default=None, \
         help='File name to write read statistics to.')
 
-    parser.add_argument("-g", "--generate_sam", action="store_true", default=True, \
-        help='Include to create a new filtered SAM to write to.')
+    parser.add_argument("-g", "--generate_bam", action="store_true", default=None, \
+        help='Include to create a new filtered BAM to write to.')
 
     parser.add_argument('--log', action='store', default=None, \
         help ="File to log results to.")
