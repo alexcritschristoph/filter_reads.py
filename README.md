@@ -31,7 +31,7 @@ optional arguments:
                         Minimum insert size between two reads - default is to use 50 bp.
   -w WRITE, --write WRITE
                         File name to write read statistics to.
-  -g, --generate_sam    Include to create a new filtered SAM to write to.
+  -g, --generate_sam    Include to create a new filtered SAM or BAM to write to (will be a sam if ends in .sam, bam if ends in .bam).
   --log LOG             File to log results to.
 
 ```
