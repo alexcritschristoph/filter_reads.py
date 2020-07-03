@@ -221,7 +221,7 @@ samtools index sample.sorted.bam\n in that order!""", formatter_class=argparse.R
         help='File name to write read statistics to.')
 
     parser.add_argument("-g", "--generate_bam", default=None, \
-        help='Include to create a new filtered BAM to write to.')
+        help='Include to create a new filtered BAM to write to. (end your file name in .bam for BAM, .sam for SAM) ')
 
     parser.add_argument('--log', action='store', default=None, \
         help ="File to log results to.")
