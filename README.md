@@ -55,3 +55,10 @@ Example:
 ```
 python filter_reads_all_scaffolds.py example.bam example.fasta -g example_filtered.bam
 ```
+
+By default, this will remove any reads that map to the same starting position as any other (only 1 read per start position allowed). 
+(If you have two identical reads, this removes one of them)
+
+to turn off this behavior, pass `--allow_dups`.
+
+
