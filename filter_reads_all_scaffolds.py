@@ -19,25 +19,28 @@ def get_fasta(fasta_file = None):
 
     return [positions, total_length]
 
-def filter_reads(bam, positions, fasta_length, filter_cutoff = 0.97, min_mapq = 2, write_data = None, write_bam = False, log=None):
+def filter_reads(bam, positions, fasta_length, filter_cutoff = 0.97, min_mapq = 2, write_data = None, write_bam = False, log=None, allow_dups = False):
 
     # read sets
     observed_read1s = set()
     observed_read2s = set()
     mapped_pairs = set()
     final_reads = set()
+    
 
     # counters
     total_read_count = 0
     total_read_pairs = 0
     total_mapped_pairs = 0
     mapped_read_lengths = 0
+    duplicate_positions = 0
 
     # storing data
     read_data = {}
     pair_mapqs = {}
     pair_mismatch = {}
     pair_inserts = {}
+    read_positions = defaultdict(list)
 
 
     samfile = pysam.AlignmentFile(bam)
@@ -77,6 +80,8 @@ def filter_reads(bam, positions, fasta_length, filter_cutoff = 0.97, min_mapq = 
                         total_mapped_pairs += 1
                         mapped_pairs.add(read.query_name) #add to found 
 
+                        read_positions[read.query_name].append(read.reference_name + ":" + str(read.get_reference_positions()[0]))
+
                         #for calculating mean read length
                         mapped_read_lengths += float(read_data[read.query_name]['len'])
 
@@ -112,6 +117,8 @@ def filter_reads(bam, positions, fasta_length, filter_cutoff = 0.97, min_mapq = 
     
     print("Filtering reads...")
 
+    positions_observed = set()
+    
     for read_pair in mapped_pairs:
         good_length += 2
         if pair_mapqs[read_pair] > min_mapq:
@@ -124,8 +131,18 @@ def filter_reads(bam, positions, fasta_length, filter_cutoff = 0.97, min_mapq = 
 
                 #write out to new bam file if option selected
                 if write_bam:
-                    for read in reads_all[read_pair]:
-                        samfile_out.write(read)
+
+                    found_pos = False
+                    for pos in read_positions[read_pair]:
+                        if not allow_dups and pos in positions_observed:
+                            found_pos = True
+                            duplicate_positions += 1
+                        else:
+                            positions_observed.add(pos)
+                    
+                    if not found_pos:
+                        for read in reads_all[read_pair]:
+                            samfile_out.write(read)
     
     print("**READ STATSTICS**")
     print("total reads found: " + str(total_read_count))
@@ -137,8 +154,9 @@ def filter_reads(bam, positions, fasta_length, filter_cutoff = 0.97, min_mapq = 
     print("")
     print("reads which also pass both pair insert size filters: " + str(good_length) + " (" + str(int(100*float(good_length) / total_read_count)) + "%)")
     print("reads which pass minimum mapq threshold of " + str(min_mapq) + ": " + str(mapq_good) + " (" + str(int(100*float(mapq_good) / total_read_count)) +  "%)")
-    print("(final) reads which also pass read pair PID >" + str(filter_cutoff) + "%: " + str(filter_cutoff_good) + " (" + str(int(100*float(filter_cutoff_good) / total_read_count)) + "%)")
-    print("(final) expected coverage: " + str(float(filter_cutoff_good) * mapped_read_lengths / fasta_length))
+    print("(final) reads which also pass read pair PID >" + str(filter_cutoff - duplicate_positions) + "%: " + str(filter_cutoff_good) + " (" + str(int(100*float(filter_cutoff_good) / total_read_count)) + "%)")
+    print("Duplicate reads: " +str(duplicate_positions))
+    print("(final) expected coverage: " + str(float(filter_cutoff_good - duplicate_positions) * mapped_read_lengths / fasta_length))
     if log:
         log_file.write("\n**READ STATSTICS**")
         log_file.write("\ntotal reads found: " + str(total_read_count))
@@ -151,7 +169,8 @@ def filter_reads(bam, positions, fasta_length, filter_cutoff = 0.97, min_mapq = 
         log_file.write("\nreads which also pass both pair insert size filters: " + str(good_length) + " (" + str(int(100*float(good_length) / total_read_count)) + "%)")
         log_file.write("\nreads which pass minimum mapq threshold of " + str(min_mapq) + ": " + str(mapq_good) + " (" + str(int(100*float(mapq_good) / total_read_count)) +  "%)")
         log_file.write("\n(final) reads which also pass read pair PID >" + str(filter_cutoff) + "%: " + str(filter_cutoff_good) + " (" + str(int(100*float(filter_cutoff_good) / total_read_count)) + "%)")
-        log_file.write("\n(final) expected coverage: " + str(float(filter_cutoff_good) * mapped_read_lengths / fasta_length))
+        log_file.write("\nDuplicate reads: " +str(duplicate_positions))
+        log_file.write("\n(final) expected coverage: " + str(float(filter_cutoff_good - duplicate_positions) * mapped_read_lengths / fasta_length))
 
     ## STEP 3: WRITE DATA IF NEEDED
     if write_data:
@@ -204,6 +223,9 @@ samtools index sample.sorted.bam\n in that order!""", formatter_class=argparse.R
     parser.add_argument("-g", "--generate_bam", default=None, \
         help='Include to create a new filtered BAM to write to. (end your file name in .bam for BAM, .sam for SAM) ')
 
+    parser.add_argument("-d", "--allow_dups", action="store_true", default=False, \
+        help='Allow duplicate positions in the new bam file. Default: False means NO duplicate positions allowed by default.')
+    
     parser.add_argument('--log', action='store', default=None, \
         help ="File to log results to.")
 
@@ -214,4 +236,4 @@ samtools index sample.sorted.bam\n in that order!""", formatter_class=argparse.R
     args = parser.parse_args()
     positions = get_fasta(args.fasta)
 
-    filter_reads(args.bam, positions[0], positions[1], float(args.mismatch_threshold),  int(args.min_mapq), write_data = args.write, write_bam=args.generate_bam, log=args.log)
+    filter_reads(args.bam, positions[0], positions[1], float(args.mismatch_threshold),  int(args.min_mapq), write_data = args.write, write_bam=args.generate_bam, log=args.log, allow_dups=args.allow_dups)
