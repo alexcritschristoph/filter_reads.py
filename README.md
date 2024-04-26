@@ -35,3 +35,23 @@ optional arguments:
   --log LOG             File to log results to.
 
 ```
+
+### New version: Filter reads where pairs can map to different scaffolds.
+
+By default, `filter_reads.py` will remove read pairs that map to different scaffolds. However, in some cases (e.g., HiC), 
+read pairs can map to different scaffolds legitimately. 
+
+`filter_reads_all_scaffolds.py` has this filter (and insert length filters) removed. 
+
+Usage:
+```
+usage: filter_reads_all_scaffolds.py [-h] [-m MISMATCH_THRESHOLD] [-q MIN_MAPQ] [-w WRITE] [-g GENERATE_BAM] [--log LOG]
+                                     bam fasta
+```
+
+Example:
+
+
+```
+python filter_reads_all_scaffolds.py example.bam example.fasta -g example_filtered.bam
+```
